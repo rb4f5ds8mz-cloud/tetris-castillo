@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
+  <title>Tetris del Castillo</title>
+  <style>
+    :root {
+      --oro: #f5b942;
+      --panel: #182440;
+      --tablero: #0a1830;
+      --muro: #7789a6;
+      --muroOscuro: #2d3b57;
+      --negro: #0d1320;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #08162f;
+      font-family: Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .juego {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 500px;
+      min-height: 650px;
+      background:
+        linear-gradient(180deg, rgba(22,58,110,0.2), rgba(7,20,40,0.4)),
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.3), transparent 20%),
+        linear-gradient(180deg, #1b4b8f 0%, #12376d 30%, #091a34 100%);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .juego::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(255,255,255,0.7) 0 2px, transparent 3px),
+        radial-gradient(circle at 70% 10%, rgba(255,255,255,0.7) 0 2px, transparent 3px),
+        radial-gradient(circle at 88% 24%, rgba(255,255,255,0.6) 0 2px, transparent 3px),
+        radial-gradient(circle at 77% 40%, rgba(255,255,255,0.5) 0 2px, transparent 3px),
+        linear-gradient(180deg, rgba(255,255,255,0.07), transparent 70%);
+      pointer-events: none;
+    }
+
+    .contenido {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .titulo {
+      margin: 14px 0 8px;
+      color: #fff1ad;
+      font-size: 28px;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 0 #4b2b12, 0 0 10px #ffbd3b;
+    }
+
+    .panel {
+      width: min(82vw, 360px);
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border: 2px solid var(--oro);
+      border-radius: 12px;
+      background: rgba(12, 24, 44, 0.88);
+      box-shadow: 0 0 8px rgba(255, 188, 60, 0.6);
+    }
+
+    .dato {
+      text-align: center;
+      color: #dfe9ff;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .dato strong {
+      display: block;
+      margin-top: 4px;
+      color: #ffd45e;
+      font-size: 18px;
+    }
+
+    .marco {
+      position: relative;
+      width: min(62vw, 280px);
+      height: min(112vw, 560px);
+      margin-top: 12px;
+      padding: 10px 18px 10px 18px;
+      background:
+        linear-gradient(90deg, #7a8a9d, #5b6c86 12%, #7a8a9d 20%, #495b73 50%, #7a8a9d 80%, #5b6c86 88%, #7a8a9d);
+      border: 8px solid #374c68;
+      border-radius: 18px;
+      box-shadow:
+        0 0 0 3px #101d2d,
+        0 0 0 8px #d69b34,
+        0 0 18px rgba(255,190,60,0.6),
+        inset 0 0 12px rgba(0,0,0,0.3);
+    }
+
+    .marco::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -2px;
+      transform: translateX(-50%);
+      width: 62%;
+      height: 18px;
+      background: linear-gradient(90deg, #7a8a9d, #5b6c86, #7a8a9d);
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 0 8px rgba(255,185,60,0.5);
+      z-index: 3;
+    }
+
+    .marco::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 10px;
+      transform: translateX(-50%);
+      width: 54%;
+      height: 36px;
+      border: 2px solid #7a8a9d;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      background: linear-gradient(90deg, #2f3c4d, #495d7a, #2f3c4d);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+      z-index: 3;
+    }
+
+    .area-juego {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      border: 3px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(8,22,47,0.96), rgba(8,22,47,0.96)),
+        repeating-linear-gradient(
+          90deg,
+          transparent 0,
+          transparent 9.5%,
+          rgba(93,128,184,0.22) 9.6%,
+          transparent 10%
+        ),
+        repeating-linear-gradient(
+          0deg,
+          transparent 0,
+          transparent 4.6%,
+          rgba(93,128,184,0.22) 4.7%,
+          transparent 5%
+        );
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      touch-action: none;
+    }
+
+    .estado {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ffdb74;
+      font-size: 22px;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .controles {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      z-index: 10;
+    }
+
+    .control {
+      width: 54px;
+      height: 48px;
+      border: 2px solid var(--oro);
+      border-radius: 12px;
+      background: linear-gradient(#425b7e, #1e2f4d);
+      color: #fff1b5;
+      font-size: 24px;
+      box-shadow: 0 3px 0 #081120, 0 0 10px rgba(255, 184, 60, 0.5);
+      cursor: pointer;
+      font-weight: bold;
+      touch-action: manipulation;
+    }
+
+    .control:active {
+      transform: translateY(3px);
+      box-shadow: 0 0 4px #f5b942;
+    }
+
+    .botones {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      z-index: 10;
+    }
+
+    .boton {
+      border: 2px solid var(--oro);
+      border-radius: 10px;
+      background: linear-gradient(#445d7c, #1b2740);
+      color: #fff0bc;
+      padding: 10px 16px;
+      font-size: 13px;
+      box-shadow: 0 3px 0 #081120, 0 0 10px rgba(255,184,60,0.45);
+      cursor: pointer;
+      font-weight: bold;
+      touch-action: manipulation;
+    }
+
+    .boton:active {
+      transform: translateY(3px);
+      box-shadow: 0 0 4px #f5b942;
+    }
+
+    .ayuda {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #dceaff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+
+    @media (max-height: 700px) {
+      .titulo { margin-top: 8px; font-size: 24px; }
+      .marco { height: 52vh; min-height: 330px; }
+      .ayuda { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="juego">
+    <div class="contenido">
+      <h1 class="titulo">♜ TETRIS ♜</h1>
+
+      <div class="panel">
+        <div class="dato">Puntos<strong id="puntos">0</strong></div>
+        <div class="dato">Nivel<strong id="nivel">1</strong></div>
+        <div class="dato">Líneas<strong id="lineas">0</strong></div>
+      </div>
+
+      <div class="marco">
+        <div class="area-juego">
+          <canvas id="canvas" width="260" height="540"></canvas>
+          <div id="estado" class="estado"></div>
+        </div>
+      </div>
+
+      <div class="controles">
+        <button class="control" id="izquierda">◀</button>
+        <button class="control" id="bajar">▼</button>
+        <button class="control" id="rotar">↻</button>
+        <button class="control" id="derecha">▶</button>
+      </div>
+
+      <div class="botones">
+        <button class="boton" id="pausar">Pausar</button>
+        <button class="boton" id="reiniciar">Nuevo juego</button>
+      </div>
+
+      <div class="ayuda">Desliza para mover · Toca para rotar</div>
+    </div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const estado = document.getElementById("estado");
+
+    const columnas = 10;
+    const filas = 20;
+    const tam = canvas.width / columnas;
+
+    const formas = [
+      [[1,1,1,1]],
+      [[1,1],[1,1]],
+      [[0,1,0],[1,1,1]],
+      [[1,0,0],[1,1,1]],
+      [[0,0,1],[1,1,1]],
+      [[0,1,1],[1,1,0]],
+      [[1,1,0],[0,1,1]]
+    ];
+
+    const colores = ["#24d7e8","#f5d34d","#a970ff","#ff982a","#4b7bff","#5ce17e","#ef5b63"];
+
+    let tablero = [];
+    let pieza = null;
+    let puntos = 0;
+    let lineas = 0;
+    let nivel = 1;
+    let velocidad = 650;
+    let pausado = false;
+    let terminado = false;
+    let ultimoTiempo = 0;
+
+    function crearTablero() {
+      tablero = Array.from({length: filas}, () => Array(columnas).fill(null));
+    }
+
+    function copiarForma(forma) {
+      return forma.map(fila => [...fila]);
+    }
+
+    function aleatoria() {
+      return Math.floor(Math.random() * formas.length);
+    }
+
+    function nuevaPieza() {
+      const tipo = aleatoria();
+      pieza = {
+        forma: copiarForma(formas[tipo]),
+        color: colores[tipo],
+        x: Math.floor(columnas / 2) - 1,
+        y: 0
+      };
+
+      if (colisiona(pieza)) {
+        terminado = true;
+        estado.textContent = "FIN DEL JUEGO";
+      }
+    }
+
+    function colisiona(p) {
+      for (let y = 0; y < p.forma.length; y++) {
+        for (let x = 0; x < p.forma[y].length; x++) {
+          if (!p.forma[y][x]) continue;
+          const nx = p.x + x;
+          const ny = p.y + y;
+
+          if (nx < 0 || nx >= columnas || ny >= filas) return true;
+          if (ny >= 0 && tablero[ny][nx]) return true;
+        }
+      }
+      return false;
+    }
+
+    function mover(dx, dy) {
+      if (pausado || terminado || !pieza) return;
+      pieza.x += dx;
+      pieza.y += dy;
+
+      if (colisiona(pieza)) {
+        pieza.x -= dx;
+        pieza.y -= dy;
+        return false;
+      }
+      return true;
+    }
+
+    function rotar() {
+      if (pausado || terminado || !pieza) return;
+
+      const anterior = pieza.forma;
+      const nueva = [];
+
+      const filasForma = anterior.length;
+      const colsForma = anterior[0].length;
+
+      for (let x = 0; x < colsForma; x++) {
+        const fila = [];
+        for (let y = filasForma - 1; y >= 0; y--) {
+          fila.push(anterior[y][x]);
+        }
+        nueva.push(fila);
+      }
+
+      pieza.forma = nueva;
+
+      if (colisiona(pieza)) {
+        pieza.forma = anterior;
+      }
+    }
+
+    function fijarPieza() {
+      for (let y = 0; y < pieza.forma.length; y++) {
+        for (let x = 0; x < pieza.forma[y].length; x++) {
+          if (!pieza.forma[y][x]) continue;
+          const nx = pieza.x + x;
+          const ny = pieza.y + y;
+          if (ny >= 0 && ny < filas && nx >= 0 && nx < columnas) {
+            tablero[ny][nx] = pieza.color;
+          }
+        }
+      }
+    }
+
+    function borrarLineas() {
+      let eliminadas = 0;
+
+      for (let y = filas - 1; y >= 0; y--) {
+        if (tablero[y].every(c => c !== null)) {
+          tablero.splice(y, 1);
+          tablero.unshift(Array(columnas).fill(null));
+          eliminadas++;
+          y++;
+        }
+      }
+
+      if (eliminadas > 0) {
+        const puntosLinea = [0, 100, 300, 500, 800];
+        puntos += puntosLinea[eliminadas] * nivel;
+        lineas += eliminadas;
+        nivel = Math.floor(lineas / 10) + 1;
+        velocidad = Math.max(100, 650 - (nivel - 1) * 45);
+        actualizarInterfaz();
+      }
+    }
+
+    function actualizarInterfaz() {
+      document.getElementById("puntos").textContent = puntos;
+      document.getElementById("nivel").textContent = nivel;
+      document.getElementById("lineas").textContent = lineas;
+    }
+
+    function bloquearPieza() {
+      fijarPieza();
+      borrarLineas();
+      nuevaPieza();
+    }
+
+    function dibujarBloque(x, y, color) {
+      const px = x * tam + 1.5;
+      const py = y * tam + 1.5;
+      const size = tam - 3;
+
+      const grad = ctx.createLinearGradient(px, py, px, py + size);
+      grad.addColorStop(0, "#fff");
+      grad.addColorStop(0.15, color);
+      grad.addColorStop(0.85, color);
+      grad.addColorStop(1, "#0e1a2f");
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(px, py, size, size);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(px, py, size, size);
+    }
+
+    function dibujar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < filas; y++) {
+        for (let x = 0; x < columnas; x++) {
+          if (tablero[y][x]) {
+            dibujarBloque(x, y, tablero[y][x]);
+          }
+        }
+      }
+
+      if (pieza) {
+        for (let y = 0; y < pieza.forma.length; y++) {
+          for (let x = 0; x < pieza.forma[y].length; x++) {
+            if (pieza.forma[y][x]) {
+              dibujarBloque(pieza.x + x, pieza.y + y, pieza.color);
+            }
+          }
+        }
+      }
+    }
+
+    function actualizar(tiempo) {
+      if (pausado || terminado) return;
+
+      if (tiempo - ultimoTiempo >= velocidad) {
+        if (!mover(0, 1)) {
+          bloquearPieza();
+        }
+        ultimoTiempo = tiempo;
+      }
+    }
+
+    function bucle(tiempo) {
+      actualizar(tiempo);
+      dibujar();
+      requestAnimationFrame(bucle);
+    }
+
+    function reiniciar() {
+      crearTablero();
+      puntos = 0;
+      lineas = 0;
+      nivel = 1;
+      velocidad = 650;
+      pausado = false;
+      terminado = false;
+      ultimoTiempo = 0;
+      estado.textContent = "";
+      actualizarInterfaz();
+      nuevaPieza();
+      dibujar();
+    }
+
+    document.getElementById("reiniciar").addEventListener("click", reiniciar);
+
+    document.getElementById("pausar").addEventListener("click", () => {
+      if (terminado) return;
+      pausado = !pausado;
+      document.getElementById("pausar").textContent = pausado ? "Continuar" : "Pausar";
+      estado.textContent = pausado ? "PAUSADO" : "";
+    });
+
+    document.getElementById("izquierda").addEventListener("click", () => mover(-1, 0));
+    document.getElementById("derecha").addEventListener("click", () => mover(1, 0));
+    document.getElementById("bajar").addEventListener("click", () => mover(0, 1));
+    document.getElementById("rotar").addEventListener("click", () => rotar());
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") mover(-1,0);
+      if (e.key === "ArrowRight") mover(1,0);
+      if (e.key === "ArrowDown") mover(0,1);
+      if (e.key === "ArrowUp" || e.key === " ") rotar();
+      if (e.key.toLowerCase() === "p") {
+        if (!terminado) {
+          pausado = !pausado;
+          document.getElementById("pausar").textContent = pausado ? "Continuar" : "Pausar";
+          estado.textContent = pausado ? "PAUSADO" : "";
+        }
+      }
+    });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    canvas.addEventListener("touchstart", (e) => {
+      const t = e.changedTouches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      touchStartTime = Date.now();
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", (e) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      const distX = Math.abs(dx);
+      const distY = Math.abs(dy);
+      const dur = Date.now() - touchStartTime;
+
+      if (distX < 12 && distY < 12 && dur < 400) {
+        rotar();
+        return;
+      }
+
+      if (distX > distY && distX > 18) {
+        if (dx > 0) mover(1,0); else mover(-1,0);
+        return;
+      }
+
+      if (distY > 18 && dy > 0) mover(0,1);
+      if (distY > 18 && dy < 0) rotar();
+
+      e.preventDefault();
+    }, { passive: false });
+
+    reiniciar();
+    requestAnimationFrame(bucle);
+  </script>
+</body>
+</html>
